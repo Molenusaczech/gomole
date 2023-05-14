@@ -7,7 +7,6 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   return (
     <>
-      <SiteHeader />
       <main>{children}</main>
     </>
   )
