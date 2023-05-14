@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 
 import { setCookie, getCookie } from "@/lib/cookie";
+import { time } from "console";
 
 
 if (getCookie("username") == "") {
@@ -207,6 +208,7 @@ function Board({ board, gameId }) {
 
 function Timer({ time, isOn }) {
 
+
     let minutes = Math.floor(time / 60);
     let seconds = time % 60;
 
@@ -236,6 +238,10 @@ function Timer({ time, isOn }) {
 }
 
 function Player({ name, pfp, gameId, slot }) {
+
+    if (gameId == null) {
+        return (<></>);
+    }
 
     function JoinGame() {
         socket.send(JSON.stringify({
@@ -284,6 +290,12 @@ function StartButton({ gameId }) {
         }));
     }
 
+    if (gameId == null) {
+        return (
+            <></>
+        )
+    }
+
     return (
         <Button
             variant="secondary"
@@ -325,12 +337,12 @@ function SymbolSelect({ gameId, show }) {
             <CardContent>
                 <div className="grid grid-cols-6">
                     <div className="col-start-2 col-end-2">
-                        <div className="justify-center items-center" onClick={() => {PickSymbol("x")}}>
+                        <div className="justify-center items-center" onClick={() => { PickSymbol("x") }}>
                             <Symbol name="x" />
                         </div>
                     </div>
                     <div className="col-span-1"></div>
-                    <div className="col-start-5 col-end-5" onClick={() => {PickSymbol("o")}}>
+                    <div className="col-start-5 col-end-5" onClick={() => { PickSymbol("o") }}>
                         <Symbol name="o" />
                     </div>
 
@@ -342,6 +354,7 @@ function SymbolSelect({ gameId, show }) {
 }
 
 export function Game() {
+    "use client";
     const [gameState, setGameState] = useState<Object>({
         "player1": "Loading...",
         "player2": "Loading...",
@@ -366,8 +379,30 @@ export function Game() {
         "player2Time": 0,
         "startingPlayer": 0,
         "status": "Loading",
+        "id": null
 
     });
+
+    function countdown() {
+        console.log("counting down");
+        console.log(gameState);
+        let curGameState = gameState;
+
+        if (curGameState["playerTurn"] == 1) {
+            console.log("counting down player 1")
+            setGameState({
+                ...curGameState,
+                player1Time: curGameState["player1Time"] - 1
+            });
+        } else if (curGameState["playerTurn"] == 2) {
+            console.log("counting down player 2")
+            setGameState({
+                ...curGameState,
+                player2Time: curGameState["player2Time"] - 1
+            });
+        }
+    }
+
     const [games, setGames] = useState<Object[]>([]);
 
     const handleGames = useCallback(
@@ -423,12 +458,47 @@ export function Game() {
         , []
     )
 
+
+    const [timer, setTimer] = useState(setInterval(countdown, 1000000000));
+
+    useEffect(() => {
+        console.log("gameState changed");
+
+        if (timer != null) {
+            clearInterval(timer);
+        }
+
+        setTimer(setInterval(function () {
+            console.log("counting down");
+            console.log(gameState);
+            let curGameState = gameState;
+
+            if (curGameState["playerTurn"] == 1) {
+                console.log("counting down player 1")
+                setGameState({
+                    ...curGameState,
+                    player1Time: curGameState["player1Time"] - 1
+                });
+            } else if (curGameState["playerTurn"] == 2) {
+                console.log("counting down player 2")
+                setGameState({
+                    ...curGameState,
+                    player2Time: curGameState["player2Time"] - 1
+                });
+            }
+        }, 1000));
+
+    }, [gameState]);
+
+
     useEffect(() => {
 
         //setGames([]);
         console.log("using effect");
 
         socket.addEventListener("message", handleGames);
+
+
     }, []);
 
 
@@ -490,7 +560,7 @@ export function Game() {
                             </div>
                             <div>
                                 <StartButton gameId={gameState["id"]} />
-                                <div>{showChoose+""}</div>
+                                <div onClick={countdown}>{showChoose + ""}</div>
                                 {JSON.stringify(gameState)}
                             </div>
                         </div>
