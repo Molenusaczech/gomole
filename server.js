@@ -8,33 +8,7 @@ let games = {};
 let users = {};
 
 const hostname = "10.0.1.19";
-const port = 8000;
-
-const server = http.createServer((req, res) => {
-
-    if (req.url == "/main.js") {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/javascript');
-        let js = fs.readFileSync("client/main.js", "utf8");
-        res.end(js);
-        return;
-    }
-
-    if (req.url == "/style.css") {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/css');
-        let css = fs.readFileSync("client/style.css", "utf8");
-        res.end(css);
-        return;
-    }
-
-    if (req.url == "/") {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/html');
-        let html = fs.readFileSync("client/client.html", "utf8");
-        res.end(html);
-    };
-});
+console.log("Server running at http://" + hostname + ":8080/");
 
 function invertPlayer(player) {
     if (player == 1) {
@@ -48,15 +22,16 @@ function startGame(id) {
 
     games[id]["status"] = "swap1";
     if (games[id]["startingPlayer"] == null) {
-        games[id]["startingPlayer"] = Math.floor(Math.random()) + 1;
+        console.log("random starting player");
+        games[id]["startingPlayer"] = Math.round(Math.random()) + 1;
     } else {
 
         if (games[id]["startingPlayer"] == 1) {
             games[id]["startingPlayer"] = 2;
-        }
-
-        if (games[id]["startingPlayer"] == 2) {
+            console.log("starting player 2");
+        } else if (games[id]["startingPlayer"] == 2) {
             games[id]["startingPlayer"] = 1;
+            console.log("starting player 1");
         }
 
     }
@@ -66,6 +41,13 @@ function startGame(id) {
     games[id]["player2Time"] = games[id]["tempo"];
     games[id]["playerTurn"] = games[id]["startingPlayer"];
     games[id]["turnStartTime"] = Date.now();
+    games[id]["lastTurn"] = undefined;
+    games[id]["history"] = {
+        swap: [],
+        swap2: [],
+        moves: [],
+        choose: null
+    },
     games[id]["board"] = [
         ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
         ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
@@ -94,9 +76,6 @@ function startGame(id) {
 
 }
 
-server.listen(port, hostname, () => {
-    console.log(`Server running at http://${hostname}:${port}/`);
-});
 
 wss.on('connection', function connection(ws) {
     console.log("Client Connected");
@@ -130,12 +109,17 @@ wss.on('connection', function connection(ws) {
                 player1Symbol: null,
                 playerTurn: 0,
                 player2Symbol: null,
-                startingPlayer: null,
                 admin: data.username,
-                tempo: 90,
+                tempo: 600,
                 fisher: 0,
                 spectators: [ data.username ],
                 status: "waiting",
+                history: {
+                    swap: [],
+                    swap2: [],
+                    moves: [],
+                    choose: null
+                },
                 board: [
                     ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
                     ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
@@ -351,27 +335,32 @@ wss.on('connection', function connection(ws) {
                     games[data.id]["board"][data.x][data.y] = "x";
                     games[data.id]["status"] = "swap2";
                     games[data.id]["turnStartTime"] = Date.now();
+                    games[data.id]["history"]["swap"][0] = [data.x, data.y];
                 } else if (games[data.id]["status"] == "swap2") {
                     games[data.id]["board"][data.x][data.y] = "o";
                     games[data.id]["status"] = "swap3";
                     games[data.id]["turnStartTime"] = Date.now();
+                    games[data.id]["history"]["swap"][1] = [data.x, data.y];
                 }
                 else if (games[data.id]["status"] == "swap3") {
                     games[data.id]["board"][data.x][data.y] = "x";
                     games[data.id]["status"] = "swap4";
                     games[data.id]["playerTurn"] = invertPlayer(games[data.id]["startingPlayer"]);
                     games[data.id]["turnStartTime"] = Date.now();
+                    games[data.id]["history"]["swap"][2] = [data.x, data.y];
                 }
             } else {
                 if (games[data.id]["status"] == "swap4") {
                     games[data.id]["board"][data.x][data.y] = "o";
                     games[data.id]["status"] = "swap5";
                     games[data.id]["turnStartTime"] = Date.now();
+                    games[data.id]["history"]["swap2"][0] = [data.x, data.y];
                 } else if (games[data.id]["status"] == "swap5") {
                     games[data.id]["board"][data.x][data.y] = "x";
                     games[data.id]["status"] = "choose";
                     games[data.id]["playerTurn"] = games[data.id]["startingPlayer"];
                     games[data.id]["turnStartTime"] = Date.now();
+                    games[data.id]["history"]["swap2"][1] = [data.x, data.y];
                 }
 
             }
@@ -379,19 +368,23 @@ wss.on('connection', function connection(ws) {
             if (games[data.id]["status"] == "turn1" && player == 1) {
                 games[data.id]["board"][data.x][data.y] = games[data.id]["player1Symbol"];
                 games[data.id]["status"] = "turn2";
+                games[data.id]["lastTurn"] = [data.x, data.y];
                 games[data.id]["playerTurn"] = 2;
                 //add time from fisher
                 games[data.id]["player1Time"] = Number(games[data.id]["fisher"]) + Number(games[data.id]["player1Time"]);
                 games[data.id]["turnStartTime"] = Date.now();
+                games[data.id]["history"]["moves"].push([data.x, data.y]);
             }
 
             if (games[data.id]["status"] == "turn2" && player == 2) {
                 games[data.id]["board"][data.x][data.y] = games[data.id]["player2Symbol"];
                 games[data.id]["status"] = "turn1";
                 games[data.id]["playerTurn"] = 1;
+                games[data.id]["lastTurn"] = [data.x, data.y];
                 //add time from fisher
                 games[data.id]["player2Time"] = Number(games[data.id]["fisher"]) + Number(games[data.id]["player2Time"]);
                 games[data.id]["turnStartTime"] = Date.now();
+                games[data.id]["history"]["moves"].push([data.x, data.y]);
             }
 
             // check for win

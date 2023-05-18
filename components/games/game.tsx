@@ -1,7 +1,7 @@
 "use client";
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
     Table,
@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-    X, Circle, Star
+    X, Circle, Star, Check, Settings
 } from "lucide-react"
 
 import { setCookie, getCookie } from "@/lib/cookie";
@@ -63,7 +63,6 @@ function CreateButton() {
 
     return (
         <Button
-            variant="secondary"
             size="sm"
             className="w-full justify-start"
             onClick={create}
@@ -90,23 +89,6 @@ function Games({ games }) {
 
     return (
         <>
-            {/*games.map(name => (
-                    <tr key={name.id}>
-                        <td>
-                            {name.id}
-                        </td>
-                        <td>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                className="w-full justify-start"
-                                onClick={() => JoinGame(name.id)}>
-                                Join
-                            </Button>
-                        </td>
-                    </tr>
-                ))*/ }
-
             <Table>
                 <TableCaption>Click a game to join!</TableCaption>
                 <TableHeader>
@@ -114,13 +96,26 @@ function Games({ games }) {
                         <TableHead className="w-[200px]">Game ID</TableHead>
                         <TableHead>Tempo</TableHead>
                         <TableHead>Method</TableHead>
-                        <TableHead className="text-right">Join</TableHead>
+                        <TableHead className="text-right">
+                            <CreateButton />
+                        </TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {games.map((game) => (
                         <TableRow key={game.id} onClick={() => { JoinGame(game.id) }}>
                             <TableCell className="font-medium">{game.id}</TableCell>
+                            <TableCell></TableCell>
+                            <TableCell></TableCell>
+                            <TableCell className="text-right">
+                                <Button
+
+                                    size="sm"
+                                    className="w-full justify-start"
+                                >
+                                    Join
+                                </Button>
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -130,10 +125,10 @@ function Games({ games }) {
     );
 }
 
-function Symbol({ name }) {
+function Symbol({ name, className }) {
     if (name == "x") {
         return (
-            <div className="symbol float-left block border-2 p-1">
+            <div className={"symbol float-left block border-2 p-1 " + className}>
                 {/*<X className="symbolSvg"/>*/}
                 <svg xmlns="http://www.w3.org/2000/svg" className="symbolSvg" viewBox="0 0 80 80">
                     <path
@@ -144,7 +139,7 @@ function Symbol({ name }) {
         )
     } else if (name == "o") {
         return (
-            <div className="symbol float-left block border-2 p-1">
+            <div className={"symbol float-left block border-2 p-1 " + className}>
                 {/*<Circle className="symbolSvg" />*/}
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="symbolSvg">
                     <circle cx="50" cy="50" r="40" stroke="#0058d4" stroke-width="15" fill="none" />
@@ -153,14 +148,14 @@ function Symbol({ name }) {
         )
     } else {
         return (
-            <div className="symbol float-left block border-2">
+            <div className={"symbol float-left block border-2 " + className}>
 
             </div>
         )
     }
 }
 
-function Board({ board, gameId }) {
+function Board({ board, gameId, lastMove }) {
 
     function play(x, y) {
         console.log("Playing " + x + " " + y + " in game " + gameId);
@@ -196,8 +191,8 @@ function Board({ board, gameId }) {
             {board.map((row, rowPos) => (
                 <div key={Math.random()}>
                     {row.map((cell, cellPos) => (
-                        <div onClick={() => { play(rowPos, cellPos) }}>
-                            <Symbol name={cell} />
+                        <div onClick={() => { play(rowPos, cellPos) }} className={highlightClass(lastMove, rowPos, cellPos)}>
+                            <Symbol name={cell} className={highlightClass(lastMove, rowPos, cellPos)} />
                         </div>
                     ))}
                 </div>
@@ -206,8 +201,25 @@ function Board({ board, gameId }) {
     )
 }
 
-function Timer({ time, isOn }) {
+function highlightClass(lastMove, x, y) {
 
+    if (lastMove == null) {
+        return "";
+    }
+
+    if (lastMove[0] == x && lastMove[1] == y) {
+        return "bg-accent";
+    } else {
+        return "";
+    }
+
+}
+
+function Timer({ time, isOn, tempo }) {
+
+    if (time == null) {
+        time = tempo;
+    }
 
     let minutes = Math.floor(time / 60);
     let seconds = time % 60;
@@ -237,7 +249,7 @@ function Timer({ time, isOn }) {
     )
 }
 
-function Player({ name, pfp, gameId, slot }) {
+function Player({ name, pfp, gameId, slot, isDisabled }) {
 
     if (gameId == null) {
         return (<></>);
@@ -256,7 +268,7 @@ function Player({ name, pfp, gameId, slot }) {
     if (name == null) {
         return (
             <>
-                <Button onClick={JoinGame}>Join</Button>
+                <Button onClick={JoinGame} disabled={isDisabled}>Join</Button>
 
             </>
         )
@@ -274,9 +286,33 @@ function Player({ name, pfp, gameId, slot }) {
             </Avatar>
             <Label>{name}</Label>
 
+            <LeaveButton gameId={gameId} show={name == username} />
+
         </>
 
     )
+}
+
+function LeaveButton({ gameId, show }) {
+
+    function leave() {
+        socket.send(JSON.stringify({
+            type: "unsit", data: {
+                "id": gameId + "",
+                "username": username
+            }
+        }));
+    }
+
+    if (!show) {
+        return (<></>);
+    } else {
+        return (
+
+            <Button onClick={leave} variant="secondary" className="float-right ">Leave</Button>
+
+        )
+    }
 }
 
 function StartButton({ gameId }) {
@@ -298,12 +334,11 @@ function StartButton({ gameId }) {
 
     return (
         <Button
-            variant="secondary"
             size="sm"
             className="w-full justify-start"
             onClick={start}
         >
-            Start
+            Ready Up!
         </Button>
     )
 
@@ -338,12 +373,12 @@ function SymbolSelect({ gameId, show }) {
                 <div className="grid grid-cols-6">
                     <div className="col-start-2 col-end-2">
                         <div className="justify-center items-center" onClick={() => { PickSymbol("x") }}>
-                            <Symbol name="x" />
+                            <Symbol name="x" className="" />
                         </div>
                     </div>
                     <div className="col-span-1"></div>
                     <div className="col-start-5 col-end-5" onClick={() => { PickSymbol("o") }}>
-                        <Symbol name="o" />
+                        <Symbol name="o" className="" />
                     </div>
 
                 </div>
@@ -351,6 +386,172 @@ function SymbolSelect({ gameId, show }) {
             </CardContent>
         </Card>
     )
+}
+
+function ReadyMarker({ isPlayer, gameId, show, isReady }) {
+
+    if (!show) {
+        return (
+            <></>
+        )
+    }
+
+    if (isPlayer) {
+
+        if (isReady) {
+            return (
+                <div className="text-lime-400">
+                    <Check className="text-lime-400 float-left" /> You are ready
+                </div>
+            )
+        } else {
+            return (
+                <StartButton gameId={gameId} />
+            )
+        }
+
+    } else {
+        if (isReady) {
+            return (
+                <div className="text-lime-400">
+                    <Check className="text-lime-400 float-left" /> Opponent is ready
+                </div>
+            )
+        } else {
+            return (
+                <div className="text-rose-700">
+                    <X className="text-rose-700 float-left" /> Opponent is not ready
+                </div>
+            )
+        }
+    }
+}
+
+function gameWaiting(status) {
+    if (status == "waiting" || status == "start1" || status == "start2") {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function GameSettings({ gameState }) {
+
+
+
+    const tempoMinRef = useRef<HTMLInputElement>(null);
+    const tempoSecRef = useRef<HTMLInputElement>(null);
+    const fisherRef = useRef<HTMLInputElement>(null);
+
+    function save() {
+
+        if (tempoMinRef.current == null
+            || tempoSecRef.current == null
+            || fisherRef.current == null
+        ) {
+            return;
+        }
+
+        let tempoMin = parseInt(tempoMinRef.current.value) || 10;
+        let tempoSec = parseInt(tempoSecRef.current.value) || 0;
+        let tempo = tempoMin * 60 + tempoSec;
+        let fisher = parseInt(fisherRef.current.value) || 0;
+        let id = gameState["id"];
+
+        socket.send(JSON.stringify({
+            type: "updateSettings", data: {
+                "id": id + "",
+                "username": username,
+                "tempo": tempo,
+                "fisher": fisher
+            }
+        }));
+
+    }
+    let buttonText = "Save";
+    let buttonDisabled = false;
+
+    if (gameState["admin"] != username) {
+        buttonText = "Only the admin can change settings";
+        buttonDisabled = true;
+    }
+
+    useEffect(() => {
+        tempoMinRef.current!.value = Math.floor(gameState["tempo"] / 60) + "";
+        tempoSecRef.current!.value = (gameState["tempo"] % 60) + "";
+        fisherRef.current!.value = gameState["fisher"] + "";
+    }, [gameState["tempo"], gameState["fisher"]]);
+
+    return (
+        <div>
+            <Label>Tempo</Label> <br></br>
+            <Input
+                type="number"
+                placeholder="mm"
+                className="w-20 float-left"
+
+                ref={tempoMinRef}
+                disabled={buttonDisabled}
+            />
+            <Input
+                type="number"
+                placeholder="ss"
+                className="w-20"
+
+                ref={tempoSecRef}
+                disabled={buttonDisabled}
+            />
+
+            <Label>Fisher</Label> <br></br>
+            <Input
+                type="number"
+                placeholder="ss"
+                className="w-20"
+
+                ref={fisherRef}
+                disabled={buttonDisabled}
+            />
+
+            <Button disabled={buttonDisabled} onClick={save}>
+                {buttonText}
+            </Button>
+
+        </div>
+    )
+}
+
+function PlayerList({ gameState }) {
+    let spectators = gameState["spectators"];
+    const list = spectators.map((spectator) => <PlayerListItem 
+    player={spectator} 
+    isAdmin={gameState["admin"] == spectator
+    
+}/>);
+    return (
+        <ul>
+        { list }
+        </ul>
+    )
+}
+
+function PlayerListItem({ player, isAdmin}) {
+
+    let title = isAdmin ? "Table Owner" : "Player";
+
+    return (<li
+
+        className="mb-4 grid grid-cols-[25px_1fr] items-start pb-4 last:mb-0 last:pb-0"
+    >
+        <span className="flex h-2 w-2 translate-y-1 rounded-full bg-sky-500" />
+        <div className="space-y-1">
+            <p className="text-sm font-medium leading-none">
+                {player}
+            </p>
+            <p className="text-sm text-muted-foreground">
+                {title}
+            </p>
+        </div>
+    </li>)
 }
 
 export function Game() {
@@ -379,9 +580,12 @@ export function Game() {
         "player2Time": 0,
         "startingPlayer": 0,
         "status": "Loading",
-        "id": null
+        "id": null,
+        "tempo": 0,
 
     });
+    const [timer, setTimer] = useState(setInterval(countdown, 1000000000));
+    const [games, setGames] = useState<Object[]>([]);
 
     function countdown() {
         console.log("counting down");
@@ -403,7 +607,7 @@ export function Game() {
         }
     }
 
-    const [games, setGames] = useState<Object[]>([]);
+
 
     const handleGames = useCallback(
         (rawData) => {
@@ -436,7 +640,7 @@ export function Game() {
                     return;
                 }
 
-                setGames(curGames);
+                setGames([...curGames]);
                 console.log("games is:");
                 console.log(games);
             } else if (data.type == "gameCreated") {
@@ -445,10 +649,12 @@ export function Game() {
                 console.log("newGames is:");
                 console.log(newGames);
 
-                setGameState("gameCreated" + newGames.length);
+                //setGameState("gameCreated" + newGames.length); //TODO: nějak fixnout, protože toto vykopává z her
                 newGames.push(data.game);
 
-                setGames(newGames);
+                setGames([...newGames]);
+                console.log("new games is:");
+                console.log(games);
 
             } else if (data.type == "gameUpdated") {
                 setGameState(data.data);
@@ -459,7 +665,7 @@ export function Game() {
     )
 
 
-    const [timer, setTimer] = useState(setInterval(countdown, 1000000000));
+
 
     useEffect(() => {
         console.log("gameState changed");
@@ -470,7 +676,7 @@ export function Game() {
 
         setTimer(setInterval(function () {
             console.log("counting down");
-            console.log(gameState);
+            //console.log(gameState);
             let curGameState = gameState;
 
             if (curGameState["playerTurn"] == 1) {
@@ -533,11 +739,31 @@ export function Game() {
                     <div className="col-span-3">
                         <div className="grid grid-cols-3">
                             <div className="col-span-1">
-                                <Player name={gameState["player1"]} gameId={gameState["id"]} slot={1} pfp="https://github.com/molenusaczech.png" />
+                                <Player
+                                    name={gameState["player1"]}
+                                    gameId={gameState["id"]}
+                                    slot={1}
+                                    pfp="https://github.com/molenusaczech.png"
+                                    isDisabled={gameState["player2"] == username}
+                                />
+                            </div>
+
+                            <div className="col-start-2 p-4">
+
+                                <ReadyMarker
+                                    isPlayer={gameState["player1"] == username}
+                                    isReady={gameState["status"] == "start1"}
+                                    gameId={gameState["id"]}
+                                    show={gameState["player1"] != null && gameState["player2"] != null && gameWaiting(gameState["status"])}
+                                />
+
                             </div>
 
                             <div className="col-start-3">
-                                <Timer time={gameState["player1Time"]} isOn={gameState["playerTurn"] == 1} />
+                                <Timer
+                                    time={gameState["player1Time"]}
+                                    isOn={gameState["playerTurn"] == 1}
+                                    tempo={gameState["tempo"]} />
                             </div>
                         </div>
 
@@ -545,21 +771,40 @@ export function Game() {
                             <SymbolSelect
                                 gameId={gameState["id"]}
                                 show={showChoose} />
-                            <Board board={gameState["board"]} gameId={gameState["id"]} />
+                            <Board board={gameState["board"]} gameId={gameState["id"]} lastMove={gameState["lastTurn"]} />
 
 
                         </div>
 
                         <div className="grid grid-cols-3">
                             <div className="col-span-1">
-                                <Player name={gameState["player2"]} gameId={gameState["id"]} slot={2} pfp="https://github.com/shadcn.png" />
+                                <Player
+                                    name={gameState["player2"]}
+                                    gameId={gameState["id"]}
+                                    slot={2}
+                                    pfp="https://github.com/shadcn.png"
+                                    isDisabled={gameState["player1"] == username} />
+                            </div>
+
+                            <div className="col-start-2 p-4">
+
+                                <ReadyMarker
+                                    isPlayer={gameState["player2"] == username}
+                                    isReady={gameState["status"] == "start2"}
+                                    gameId={gameState["id"]}
+                                    show={gameState["player1"] != null && gameState["player2"] != null && gameWaiting(gameState["status"])}
+                                />
+
                             </div>
 
                             <div className="col-start-3">
-                                <Timer time={gameState["player2Time"]} isOn={gameState["playerTurn"] == 2} />
+                                <Timer
+                                    time={gameState["player2Time"]}
+                                    isOn={gameState["playerTurn"] == 2}
+                                    tempo={gameState["tempo"]} />
                             </div>
                             <div>
-                                <StartButton gameId={gameState["id"]} />
+
                                 <div onClick={countdown}>{showChoose + ""}</div>
                                 {JSON.stringify(gameState)}
                             </div>
@@ -568,14 +813,16 @@ export function Game() {
                     </div>
 
                     <div className="col-span-2">
-                        <CreateButton />
 
-                        <Games games={games} />
 
-                        <Tabs defaultValue="history" className="w-[400px]">
-                            <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="history">History</TabsTrigger>
+
+
+                        <Tabs defaultValue="games" className="w-[100%]">
+                            <TabsList className="grid w-full grid-cols-4">
                                 <TabsTrigger value="games">Games</TabsTrigger>
+                                <TabsTrigger value="history" disabled={gameState["id"] == null}>History</TabsTrigger>
+                                <TabsTrigger value="settings" disabled={gameState["id"] == null}>Settings</TabsTrigger>
+                                <TabsTrigger value="players" disabled={gameState["id"] == null}>Players</TabsTrigger>
                             </TabsList>
                             <TabsContent value="history">
                                 <Card>
@@ -589,6 +836,33 @@ export function Game() {
                                     <CardHeader>
                                         <CardTitle>Games</CardTitle>
                                     </CardHeader>
+                                    <CardContent>
+                                        <Games games={games} />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="settings">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Settings</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+
+                                        <GameSettings gameState={gameState} />
+
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="players">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Players</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+
+                                        <PlayerList gameState={gameState} />
+
+                                    </CardContent>
                                 </Card>
                             </TabsContent>
                         </Tabs>
@@ -597,6 +871,7 @@ export function Game() {
 
                 </div>
             </div>
+            {JSON.stringify(games)}
         </>
     )
 
