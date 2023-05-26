@@ -30,7 +30,7 @@ function GuestInput() {
             return;
         }
 
-        setCookie("username", "guest_" + username, 1);
+        setCookie("username", "guest_" + username, 365);
         alert("Logged in as guest_" + username);
         location.reload();
 

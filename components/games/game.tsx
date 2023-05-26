@@ -26,11 +26,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-    X, Circle, Star, Check, Settings
+  Star, Check, Settings, X
 } from "lucide-react"
 
 import { setCookie, getCookie } from "@/lib/cookie";
 import { time } from "console";
+import { start } from "repl";
+import { Separator } from "@radix-ui/react-context-menu";
+import { off } from "process";
 
 
 if (getCookie("username") == "") {
@@ -93,9 +96,9 @@ function Games({ games }) {
                 <TableCaption>Click a game to join!</TableCaption>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="w-[200px]">Game ID</TableHead>
-                        <TableHead>Tempo</TableHead>
-                        <TableHead>Method</TableHead>
+                        <TableHead className="w-[200px]"></TableHead>
+                        <TableHead></TableHead>
+                        <TableHead></TableHead>
                         <TableHead className="text-right">
                             <CreateButton />
                         </TableHead>
@@ -125,25 +128,37 @@ function Games({ games }) {
     );
 }
 
+function Cross() {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" className="symbolSvg" viewBox="0 0 80 80">
+                    <path
+                        d="M 0 10 L 10 0 L 40 30 L 70 0 L 80 10 L 50 40 M 50 40 L 80 70 L 70 80 L 40 50 L 10 80 L 0 70 L 30 40 L 0 10"
+                        fill="#e11734" />
+                </svg>
+    )
+}
+
+function Circle() {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="symbolSvg">
+                    <circle cx="50" cy="50" r="40" stroke="#0058d4" stroke-width="15" fill="none" />
+                </svg>
+    )
+}
+
 function Symbol({ name, className }) {
     if (name == "x") {
         return (
             <div className={"symbol float-left block border-2 p-1 " + className}>
                 {/*<X className="symbolSvg"/>*/}
-                <svg xmlns="http://www.w3.org/2000/svg" className="symbolSvg" viewBox="0 0 80 80">
-                    <path
-                        d="M 0 10 L 10 0 L 40 30 L 70 0 L 80 10 L 50 40 M 50 40 L 80 70 L 70 80 L 40 50 L 10 80 L 0 70 L 30 40 L 0 10"
-                        fill="#e11734" />
-                </svg>
+                <Cross />
             </div>
         )
     } else if (name == "o") {
         return (
             <div className={"symbol float-left block border-2 p-1 " + className}>
                 {/*<Circle className="symbolSvg" />*/}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="symbolSvg">
-                    <circle cx="50" cy="50" r="40" stroke="#0058d4" stroke-width="15" fill="none" />
-                </svg>
+                <Circle />
             </div>
         )
     } else {
@@ -249,7 +264,7 @@ function Timer({ time, isOn, tempo }) {
     )
 }
 
-function Player({ name, pfp, gameId, slot, isDisabled }) {
+function Player({ name, pfp, gameId, slot, isDisabled, symbol }) {
 
     if (gameId == null) {
         return (<></>);
@@ -276,6 +291,14 @@ function Player({ name, pfp, gameId, slot, isDisabled }) {
 
     let short = name.substring(0, 2).toUpperCase();
 
+    let symbolText = (<></>);
+
+    if (symbol == "x") {
+        symbolText = (<Cross />);
+    } else if (symbol == "o") {
+        symbolText = (<Circle />);
+    }
+
     return (
 
         <>
@@ -284,8 +307,11 @@ function Player({ name, pfp, gameId, slot, isDisabled }) {
                 <AvatarImage src={pfp} />
                 <AvatarFallback>{short}</AvatarFallback>
             </Avatar>
-            <Label>{name}</Label>
+            <Label className="float-left">{name}</Label>
 
+            <div className="w-10 h-10 float-left py-2">
+            {symbolText}
+            </div>
             <LeaveButton gameId={gameId} show={name == username} />
 
         </>
@@ -414,13 +440,13 @@ function ReadyMarker({ isPlayer, gameId, show, isReady }) {
         if (isReady) {
             return (
                 <div className="text-lime-400">
-                    <Check className="text-lime-400 float-left" /> Opponent is ready
+                    <Check className="text-lime-400 float-left" /> Player is ready
                 </div>
             )
         } else {
             return (
                 <div className="text-rose-700">
-                    <X className="text-rose-700 float-left" /> Opponent is not ready
+                    <X className="text-rose-700 float-left" /> Player is not ready
                 </div>
             )
         }
@@ -522,19 +548,19 @@ function GameSettings({ gameState }) {
 
 function PlayerList({ gameState }) {
     let spectators = gameState["spectators"];
-    const list = spectators.map((spectator) => <PlayerListItem 
-    player={spectator} 
-    isAdmin={gameState["admin"] == spectator
-    
-}/>);
+    const list = spectators.map((spectator) => <PlayerListItem
+        player={spectator}
+        isAdmin={gameState["admin"] == spectator
+
+        } />);
     return (
         <ul>
-        { list }
+            {list}
         </ul>
     )
 }
 
-function PlayerListItem({ player, isAdmin}) {
+function PlayerListItem({ player, isAdmin }) {
 
     let title = isAdmin ? "Table Owner" : "Player";
 
@@ -552,6 +578,277 @@ function PlayerListItem({ player, isAdmin}) {
             </p>
         </div>
     </li>)
+}
+
+function LeaveGameButton({ gameId }) {
+    function leave() {
+        console.log("Leave Game" + gameId);
+        socket.send(JSON.stringify({
+            type: "leave", data: {
+                "id": gameId + "",
+                "username": username
+            }
+        }));
+    }
+
+    if (gameId == null) {
+        return (
+            <></>
+        )
+    }
+
+    return (
+        <Button
+            size="sm"
+            className="w-full justify-start"
+            onClick={leave}
+        >
+            Leave Game
+        </Button>
+    )
+}
+
+function History({ history, startingPlayer, p1, p2 }) {
+    return (
+        <>
+            <Table>
+                <TableCaption>Click a turn to time travel.</TableCaption>
+                <TableHeader>
+                    <TableHead></TableHead>
+                    <TableHead></TableHead>
+                    <TableHead></TableHead>
+                </TableHeader>
+                <TableBody>
+
+                    <HistorySwap
+                        swapHistory={history["swap"]}
+                        startingPlayer={startingPlayer}
+                    />
+                    <HistorySwapTwo
+                        swapHistory={history["swap2"]}
+                        startingPlayer={startingPlayer}
+                    />
+                    <HistorySeparator
+                        value={history["choose"]}
+                        startingPlayer={startingPlayer}
+                        swap2History={history["swap2"]}
+                    />
+                    <HistoryTurn
+                        startingPlayer={startingPlayer}
+                        swap2History={history["swap2"]}
+                        history={history["moves"]}
+                        choose={history["choose"]}
+                    />
+
+                </TableBody>
+            </Table>
+        </>
+    )
+}
+
+function HistorySwap({ swapHistory, startingPlayer, }) {
+    let history = "";
+    if (startingPlayer == 1) {
+
+        history = swapHistory.map((symbol, index) => (
+
+            <TableRow key={index + 1}>
+                <TableCell>{index + 1}.</TableCell>
+                <TableCell><HistoryCell value={symbol} show={true} /></TableCell>
+                <TableCell></TableCell>
+            </TableRow>
+
+        ))
+
+
+    } else {
+        history = swapHistory.map((symbol, index) => (
+
+            <TableRow key={index + 1}>
+                <TableCell>{index + 1}.</TableCell>
+                <TableCell></TableCell>
+                <TableCell><HistoryCell value={symbol} show={true} /></TableCell>
+            </TableRow>
+
+        ))
+
+
+    }
+    console.log("History Swap");
+    console.log(history);
+    return (
+        <>
+
+            {history}
+        </>
+    )
+}
+
+function HistorySwapTwo({ swapHistory, startingPlayer, }) {
+    let history = "";
+    if (startingPlayer == 2) {
+
+        history = swapHistory.map((symbol, index) => (
+
+            <TableRow key={index + 4}>
+                <TableCell>{index + 4}.</TableCell>
+                <TableCell><HistoryCell value={symbol} show={true} /></TableCell>
+                <TableCell></TableCell>
+            </TableRow>
+
+        ))
+
+
+    } else {
+        history = swapHistory.map((symbol, index) => (
+
+            <TableRow key={index + 4}>
+                <TableCell>{index + 4}.</TableCell>
+                <TableCell></TableCell>
+                <TableCell><HistoryCell value={symbol} show={true} /></TableCell>
+            </TableRow>
+
+        ))
+
+
+    }
+    console.log("History Swap");
+    console.log(history);
+    return (
+        <>
+
+            {history}
+        </>
+    )
+}
+
+function HistorySeparator({ value, startingPlayer, swap2History }) {
+
+    if (value == null) {
+        return (<> </>)
+    }
+    let pos = 0;
+
+    if (startingPlayer == 1) {
+
+        if (swap2History.length == 0) {
+            pos = 2;
+        } else {
+            pos = 1;
+        }
+
+    } else {
+
+        if (swap2History.length == 0) {
+            pos = 1;
+        } else {
+            pos = 2;
+        }
+
+    }
+
+    if (pos == 1) {
+        return (
+            <TableRow key="choose">
+                <TableCell>
+                    Pick
+                </TableCell>
+                <TableCell>
+                    {value}
+                </TableCell>
+
+            </TableRow>
+        )
+    } else {
+        return (
+            <TableRow key="choose">
+                <TableCell>
+                    Pick
+                </TableCell>
+                <TableCell>
+
+                </TableCell>
+
+                <TableCell>
+                    {value}
+                </TableCell>
+
+            </TableRow>
+        )
+    }
+}
+
+function InvertPlayer(player) {
+    if (player == 1) {
+        return 2;
+    } else {
+        return 1;
+    }
+}
+
+function HistoryTurn({ history, startingPlayer, swap2History, choose }) {
+    let newHistory: Array<Array<string>> = [];
+
+    let firstTurn = startingPlayer;
+    let offset = 4;
+
+    if (swap2History.length == 0) {
+        offset = 6;
+        firstTurn = InvertPlayer(firstTurn);
+    }
+
+    if (choose == "x") {
+        firstTurn = InvertPlayer(firstTurn);
+    }
+
+    for (let i = 0; i < Math.ceil(history.length / 2); i++) {
+
+        history[i * 2 + 1] ??= "";
+
+
+        let curTurn = ["", ""];
+        if (firstTurn == 1) {
+            curTurn = [history[i * 2], history[i * 2 + 1]];
+        } else {
+            curTurn = [history[i * 2 + 1], history[i * 2]];
+        }
+        newHistory.push(curTurn);
+
+    }
+
+    return (<>
+        {newHistory.map((symbol, index) => (
+            <TableRow key={index + offset}>
+                <TableCell>{index + offset}.</TableCell>
+                <TableCell><HistoryCell value={symbol[0]} show={true} /></TableCell>
+
+                <TableCell><HistoryCell value={symbol[1]} show={true} /></TableCell>
+
+            </TableRow>
+        ))}
+    </>)
+}
+
+function HistoryCell({ value, show }) {
+
+
+
+    if (!show || value == null) {
+        return (<></>)
+    }
+
+    let letter = String.fromCharCode(value[0] + 96);
+    let text = letter + value[1];
+
+    if (value == "") {
+        text = "";
+    }
+
+    return (
+        <>
+            <Label>{text}</Label>
+        </>
+    )
 }
 
 export function Game() {
@@ -658,6 +955,35 @@ export function Game() {
 
             } else if (data.type == "gameUpdated") {
                 setGameState(data.data);
+            } else if (data.type == "gameLeft") {
+                setGameState({
+                    "player1": "Loading...",
+                    "player2": "Loading...",
+                    "playerTurn": 0,
+                    "board": [["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+                    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]
+                    ],
+                    "player1Time": 0,
+                    "player2Time": 0,
+                    "startingPlayer": 0,
+                    "status": "Loading",
+                    "id": null,
+                    "tempo": 0,
+
+                });
             }
 
         }
@@ -745,6 +1071,7 @@ export function Game() {
                                     slot={1}
                                     pfp="https://github.com/molenusaczech.png"
                                     isDisabled={gameState["player2"] == username}
+                                    symbol={gameState["player1Symbol"]}
                                 />
                             </div>
 
@@ -783,7 +1110,9 @@ export function Game() {
                                     gameId={gameState["id"]}
                                     slot={2}
                                     pfp="https://github.com/shadcn.png"
-                                    isDisabled={gameState["player1"] == username} />
+                                    isDisabled={gameState["player1"] == username} 
+                                    symbol={gameState["player2Symbol"]}
+                                />
                             </div>
 
                             <div className="col-start-2 p-4">
@@ -829,6 +1158,14 @@ export function Game() {
                                     <CardHeader>
                                         <CardTitle>History</CardTitle>
                                     </CardHeader>
+                                    <CardContent>
+                                        <History
+                                            history={gameState["history"]}
+                                            startingPlayer={gameState["startingPlayer"]}
+                                            p1={gameState["player1"]}
+                                            p2={gameState["player2"]}
+                                        />
+                                    </CardContent>
                                 </Card>
                             </TabsContent>
                             <TabsContent value="games">
@@ -848,6 +1185,7 @@ export function Game() {
                                     </CardHeader>
                                     <CardContent>
 
+                                        <LeaveGameButton gameId={gameState["id"]} />
                                         <GameSettings gameState={gameState} />
 
                                     </CardContent>
