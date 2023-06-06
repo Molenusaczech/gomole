@@ -34,3 +34,8 @@ yarn-error.log*
 
 .contentlayer
 .env
+config/secret.ts
+.vscode/settings.json
+secret.json
+config/secret.js
+secret.js

@@ -11,52 +11,7 @@ import { Sidebar } from "@/components/sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LoginForm } from "@/components/login/loginForm";
 import { RegisterForm } from "@/components/login/registerForm";
-
-function GuestInput() {
-
-    const guestRef = useRef<HTMLInputElement>(null);
-
-    function guestLogin() {
-        console.log("guest login");
-
-        if (guestRef.current == null) {
-            return;
-        }
-
-        console.log("guest_" + guestRef.current.value);
-        let username = guestRef.current.value;
-        if (username == "") {
-            alert("Please enter a username");
-            return;
-        }
-
-        setCookie("username", "guest_" + username, 365);
-        alert("Logged in as guest_" + username);
-        location.reload();
-
-    }
-
-    const handleKeyDown = (event) => {
-        if (event.key === 'Enter') {
-            guestLogin();
-        }
-    };
-
-    return (
-        <div className="flex w-full max-w-sm items-center space-x-2">
-            <Input
-                type="text"
-                placeholder="Guest Username"
-                ref={guestRef}
-                onKeyDown={handleKeyDown}
-            />
-            <Button type="submit" onClick={guestLogin}>Login</Button>
-        </div>
-    )
-}
-
 
 export default function App() {
     return (
@@ -74,7 +29,7 @@ export default function App() {
                         justifyContent: 'center',
                         height: '90vh',
                     }}>
-                        <LoginForm />
+                        <RegisterForm />
                     </div>
                 </div>
                 {/*<LoginForm />*/}

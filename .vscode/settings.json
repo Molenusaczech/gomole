@@ -1,4 +1,13 @@
 {
   "typescript.tsdk": "../../node_modules/.pnpm/typescript@4.9.5/node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "SQLite",
+      "name": "gomokuSQL",
+      "database": "${workspaceFolder:gomoku}/database.db"
+    }
+  ],
+  "sqltools.useNodeRuntime": true
 }

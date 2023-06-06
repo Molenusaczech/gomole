@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-  Star, Check, Settings, X
+    Star, Check, Settings, X
 } from "lucide-react"
 
 import { setCookie, getCookie } from "@/lib/cookie";
@@ -34,6 +34,7 @@ import { time } from "console";
 import { start } from "repl";
 import { Separator } from "@radix-ui/react-context-menu";
 import { off } from "process";
+import { historyToBoard } from "@/lib/boardRender"
 
 
 if (getCookie("username") == "") {
@@ -131,18 +132,18 @@ function Games({ games }) {
 function Cross() {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" className="symbolSvg" viewBox="0 0 80 80">
-                    <path
-                        d="M 0 10 L 10 0 L 40 30 L 70 0 L 80 10 L 50 40 M 50 40 L 80 70 L 70 80 L 40 50 L 10 80 L 0 70 L 30 40 L 0 10"
-                        fill="#e11734" />
-                </svg>
+            <path
+                d="M 0 10 L 10 0 L 40 30 L 70 0 L 80 10 L 50 40 M 50 40 L 80 70 L 70 80 L 40 50 L 10 80 L 0 70 L 30 40 L 0 10"
+                fill="#e11734" />
+        </svg>
     )
 }
 
 function Circle() {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="symbolSvg">
-                    <circle cx="50" cy="50" r="40" stroke="#0058d4" stroke-width="15" fill="none" />
-                </svg>
+            <circle cx="50" cy="50" r="40" stroke="#0058d4" stroke-width="15" fill="none" />
+        </svg>
     )
 }
 
@@ -310,7 +311,7 @@ function Player({ name, pfp, gameId, slot, isDisabled, symbol }) {
             <Label className="float-left">{name}</Label>
 
             <div className="w-10 h-10 float-left py-2">
-            {symbolText}
+                {symbolText}
             </div>
             <LeaveButton gameId={gameId} show={name == username} />
 
@@ -608,9 +609,37 @@ function LeaveGameButton({ gameId }) {
     )
 }
 
-function History({ history, startingPlayer, p1, p2 }) {
+function History({ history, startingPlayer, p1, p2, historyTurn, setHistoryTurn }) {
+    
+    let offset = 0;
+
+    if (history["swap2"].length > 0) {
+        offset = 1;
+    }
+    
+    function removeOne() {
+        if (historyTurn == -1) {
+            setHistoryTurn(offset + history["moves"].length - 1);
+        } else {
+            setHistoryTurn(historyTurn - 1);
+        }
+    }
+
+    function addOne() {
+        if (historyTurn == history["moves"].length + offset - 1) {
+            setHistoryTurn(-1);
+        } else {
+            setHistoryTurn(historyTurn + 1);
+        }
+    }
+
     return (
         <>
+            <Button onClick={() => setHistoryTurn(0)} disabled={historyTurn == 0}> ⬅️ </Button>
+            <Button onClick={() => setHistoryTurn(removeOne)} disabled={historyTurn == 0}> ⬅️ </Button>
+            Turn: {historyTurn}
+            <Button onClick={() => setHistoryTurn(addOne)} disabled={historyTurn == -1}> ➡️ </Button>
+            <Button onClick={() => setHistoryTurn(-1)} disabled={historyTurn == -1}> ➡️ </Button>
             <Table>
                 <TableCaption>Click a turn to time travel.</TableCaption>
                 <TableHeader>
@@ -837,8 +866,8 @@ function HistoryCell({ value, show }) {
         return (<></>)
     }
 
-    let letter = String.fromCharCode(value[0] + 96);
-    let text = letter + value[1];
+    let letter = String.fromCharCode(value[0] + 97);
+    let text = letter + (value[1]+1);
 
     if (value == "") {
         text = "";
@@ -883,6 +912,7 @@ export function Game() {
     });
     const [timer, setTimer] = useState(setInterval(countdown, 1000000000));
     const [games, setGames] = useState<Object[]>([]);
+    const [historyTurn, setHistoryTurn] = useState<Number>(-1);
 
     function countdown() {
         console.log("counting down");
@@ -1056,6 +1086,12 @@ export function Game() {
         }
     }
 
+    let curBoard = gameState["board"];
+
+    if (historyTurn != -1) {
+        curBoard = historyToBoard(gameState["history"], historyTurn);
+    }
+
 
     return (
         <>
@@ -1098,7 +1134,7 @@ export function Game() {
                             <SymbolSelect
                                 gameId={gameState["id"]}
                                 show={showChoose} />
-                            <Board board={gameState["board"]} gameId={gameState["id"]} lastMove={gameState["lastTurn"]} />
+                            <Board board={curBoard} gameId={gameState["id"]} lastMove={gameState["lastTurn"]} />
 
 
                         </div>
@@ -1110,7 +1146,7 @@ export function Game() {
                                     gameId={gameState["id"]}
                                     slot={2}
                                     pfp="https://github.com/shadcn.png"
-                                    isDisabled={gameState["player1"] == username} 
+                                    isDisabled={gameState["player1"] == username}
                                     symbol={gameState["player2Symbol"]}
                                 />
                             </div>
@@ -1164,6 +1200,8 @@ export function Game() {
                                             startingPlayer={gameState["startingPlayer"]}
                                             p1={gameState["player1"]}
                                             p2={gameState["player2"]}
+                                            historyTurn={historyTurn}
+                                            setHistoryTurn={setHistoryTurn}
                                         />
                                     </CardContent>
                                 </Card>

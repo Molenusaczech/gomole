@@ -15,4 +15,8 @@ export const siteConfig = {
     github: "https://github.com/shadcn/ui",
     docs: "https://ui.shadcn.com",
   },
+  restUrl: "http://localhost:8081",
+  socketUrl: "http://localhost:8080",
+  recaptchaSite: "6Led6F4mAAAAAIIRJtaTD4268AC7dvhkOEsd_oub"
+
 }
